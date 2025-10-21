@@ -46,9 +46,9 @@ def get_summary_stats():
             return jsonify({'error': 'No data available'}), 404
 
         # Calculate averages
-        daily = processor.calculate_daily_averages(clients, days=7)
-        weekly = processor.calculate_weekly_averages(clients, weeks=4)
-        monthly = processor.calculate_monthly_averages(clients, months=3)
+        daily = processor.calculate_daily_averages(clients, num_days=7)
+        weekly = processor.calculate_weekly_averages(clients, num_weeks=4)
+        monthly = processor.calculate_monthly_averages(clients, num_months=3)
 
         # MAC randomization analysis
         mac_analysis = processor.analyze_mac_randomization(clients)
@@ -187,7 +187,7 @@ def get_weekly_details():
         if not clients:
             return jsonify({'error': 'No data available'}), 404
 
-        weekly_data = processor.calculate_weekly_averages(clients, weeks=weeks)
+        weekly_data = processor.calculate_weekly_averages(clients, num_weeks=weeks)
 
         db.close()
 
@@ -223,7 +223,7 @@ def get_monthly_details():
         if not clients:
             return jsonify({'error': 'No data available'}), 404
 
-        monthly_data = processor.calculate_monthly_averages(clients, months=months)
+        monthly_data = processor.calculate_monthly_averages(clients, num_months=months)
 
         db.close()
 
@@ -265,9 +265,9 @@ def export_data(format):
             'organization_name': 'Rochester Makerspace, Inc.',
             'timestamp': datetime.utcnow().isoformat() + 'Z',
             'averages': {
-                'daily': processor.calculate_daily_averages(clients, days=7),
-                'weekly': processor.calculate_weekly_averages(clients, weeks=4),
-                'monthly': processor.calculate_monthly_averages(clients, months=3)
+                'daily': processor.calculate_daily_averages(clients, num_days=7),
+                'weekly': processor.calculate_weekly_averages(clients, num_weeks=4),
+                'monthly': processor.calculate_monthly_averages(clients, num_months=3)
             },
             'mac_randomization_analysis': processor.analyze_mac_randomization(clients)
         }
