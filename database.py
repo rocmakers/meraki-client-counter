@@ -190,6 +190,21 @@ class ClientDatabase:
 
         return clients
 
+    def get_latest_client_timestamp(self):
+        """
+        Get the most recent last_seen timestamp from the database.
+
+        Returns:
+            str: ISO format timestamp of most recent client, or None if no data
+        """
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT MAX(last_seen) as latest_timestamp
+            FROM clients
+        ''')
+        row = cursor.fetchone()
+        return row['latest_timestamp'] if row else None
+
     def get_all_clients(self):
         """
         Retrieve all clients from database.

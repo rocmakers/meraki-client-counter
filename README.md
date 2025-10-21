@@ -235,13 +235,15 @@ crontab -e
 
 ### What This Does
 
-- Collects last **7 days** from Meraki API every night (optimal for daily collection)
+- **Smart Collection**: Automatically fetches only what's needed since last run (plus 12-hour safety buffer)
+- **First Run**: Collects 30 days of initial data to build historical baseline
+- **Daily Runs**: Typically fetches ~1.5 days (24h + 12h buffer) - extremely efficient!
 - Stores new records in SQLite database
 - Automatically skips duplicates
 - Over time, builds up **52 weeks** and **12 months** of data
 - Charts will show more history as data accumulates
 
-**Why 7 days?** This provides a safety margin in case the cron job fails for a day or two, while being much more efficient than pulling 30 days every time.
+**How it works:** The app tracks the most recent client timestamp in the database and only fetches data from that point (minus 12 hours as a safety buffer). This means if you run daily, it only fetches ~1.5 days instead of 7 or 30 days - much more API-efficient!
 
 **See [CRON_SETUP.md](CRON_SETUP.md) for detailed instructions and troubleshooting.**
 

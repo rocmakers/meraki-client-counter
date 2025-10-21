@@ -148,31 +148,57 @@ Examples:
     return parser.parse_args()
 
 
-def collect_client_data(client, org_id, days_to_fetch=7):
+def collect_client_data(client, org_id, db, buffer_hours=12):
     """
     Collect client data from Meraki API.
+    Uses smart collection: fetches from last collection timestamp minus buffer hours.
+    On first run, fetches 30 days of initial data.
 
     Args:
         client: MerakiClient instance
         org_id: Organization ID
-        days_to_fetch: Number of days of data to fetch (default: 7 for daily cron)
+        db: ClientDatabase instance
+        buffer_hours: Safety buffer in hours before last collection (default: 12)
 
     Returns:
-        list: Client records
+        tuple: (client records, days_fetched)
     """
     logger = logging.getLogger(__name__)
 
-    # Calculate timespan in seconds (max 30 days = 2592000 seconds per API call)
-    max_days_per_call = 30
-    timespan_seconds = min(days_to_fetch, max_days_per_call) * 86400
+    from datetime import datetime, timedelta
 
-    logger.info(f"Fetching client data for last {min(days_to_fetch, max_days_per_call)} days...")
+    # Get the latest client timestamp from database
+    latest_timestamp = db.get_latest_client_timestamp()
+
+    if latest_timestamp:
+        # Parse the timestamp and subtract buffer hours
+        # Remove timezone info to work with naive datetimes
+        latest_dt = datetime.fromisoformat(latest_timestamp.replace('Z', '').replace('+00:00', ''))
+        fetch_from = latest_dt - timedelta(hours=buffer_hours)
+        now = datetime.utcnow()
+
+        # Calculate how many days we need to fetch
+        days_to_fetch = (now - fetch_from).days + 1  # +1 to ensure we cover partial days
+
+        # Cap at API maximum (30 days)
+        days_to_fetch = min(days_to_fetch, 30)
+
+        logger.info(f"Last collection: {latest_timestamp}")
+        logger.info(f"Fetching from {fetch_from.isoformat()} (last collection - {buffer_hours}h buffer)")
+        logger.info(f"Fetching {days_to_fetch} days of data...")
+    else:
+        # First run - fetch 30 days to build initial historical data
+        days_to_fetch = 30
+        logger.info("First run detected - fetching 30 days of initial data...")
+
+    # Calculate timespan in seconds
+    timespan_seconds = days_to_fetch * 86400
 
     # Collect client data from API
     clients = client.get_clients_in_timespan(org_id, timespan_seconds)
 
     logger.info(f"Retrieved {len(clients)} total client records")
-    return clients
+    return clients, days_to_fetch
 
 
 def main():
@@ -238,36 +264,9 @@ def main():
     org_name = org_info.get('name', 'Unknown')
     logger.info(f"Organization: {org_name}")
 
-    # Determine how many days of data to fetch
-    # Default to 7 days for regular collection (optimal for daily cron)
-    # If specific analysis periods requested or generating charts, use those parameters
-    if args.generate_charts:
-        days_to_fetch = max(
-            args.chart_weeks * 7,
-            args.chart_months * 31
-        )
-    elif args.period != 'all':
-        # Specific period requested, fetch enough for that analysis
-        days_to_fetch = max(
-            args.days if args.period == 'daily' else 0,
-            args.weeks * 7 if args.period == 'weekly' else 0,
-            args.months * 31 if args.period == 'monthly' else 0
-        )
-    else:
-        # Default: fetch 7 days for efficient daily collection
-        # This is optimal for cron jobs running daily
-        days_to_fetch = 7
-
-    # Limit to API maximum
-    days_to_fetch = min(days_to_fetch, 30)
-
-    # Warn if requested data exceeds API limit
-    if args.generate_charts and (args.chart_weeks * 7 > 30 or args.chart_months * 31 > 30):
-        logger.warning(f"Note: Meraki API limits data to 30 days. Charts will show available data only.")
-        logger.warning(f"For {args.chart_weeks} weeks or {args.chart_months} months, you would need historical data collection.")
-
-    # Collect client data from API and store in database
-    clients_from_api = collect_client_data(meraki_client, org_id, days_to_fetch)
+    # Collect client data from API using smart timestamp-based collection
+    # This automatically determines how much data to fetch based on last collection
+    clients_from_api, days_fetched = collect_client_data(meraki_client, org_id, db)
 
     if not clients_from_api:
         logger.warning("No client data retrieved from API")
@@ -279,7 +278,7 @@ def main():
     # Store API data in database
     if clients_from_api:
         logger.info("Storing client data in database...")
-        new_records, duplicates = db.store_clients(clients_from_api, org_id, org_name, days_to_fetch)
+        new_records, duplicates = db.store_clients(clients_from_api, org_id, org_name, days_fetched)
         logger.info(f"Database updated: {new_records} new records, {duplicates} duplicates")
 
     # Determine which data to use for analysis

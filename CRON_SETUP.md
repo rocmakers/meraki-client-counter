@@ -14,7 +14,8 @@ Run the Meraki client counter daily to build up historical data in the SQLite da
 
 This will:
 - Run every day at 12:01 AM
-- Collect last 7 days from Meraki API (optimal for daily collection)
+- **Smart Collection**: Only fetches data since last run + 12-hour buffer (~1.5 days for daily runs)
+- **First Run**: Collects 30 days of initial historical data
 - Store new client records in database (duplicates automatically skipped)
 - Log output to `/var/log/meraki_collection.log`
 
@@ -58,6 +59,20 @@ grep CRON /var/log/system.log
 # View collection log
 tail -f /var/log/meraki_collection.log
 ```
+
+## How Smart Collection Works
+
+The application uses **timestamp-based collection** for maximum efficiency:
+
+1. **First Run**: Fetches 30 days of data to build initial baseline
+2. **Subsequent Runs**: Queries database for most recent client timestamp
+3. **Calculates Range**: Fetches from (last_timestamp - 12 hours) to now
+4. **Adapts Automatically**:
+   - Daily cron → fetches ~1.5 days
+   - Missed a few days → automatically catches up
+   - Weekly cron → fetches ~7.5 days
+
+**Result**: Minimal API calls while ensuring no data gaps!
 
 ## Database Growth Over Time
 
