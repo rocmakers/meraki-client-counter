@@ -316,14 +316,16 @@
         <!-- Peak Hours Tab -->
         <div id="peak-hours-tab" class="tab-content">
             <div class="chart-container">
-                <h2>Average Clients by Hour of Day</h2>
+                <h2>Total Unique Clients by Hour of Day</h2>
+                <p style="color: #666; margin-top: -10px; margin-bottom: 20px;">Shows how many different clients have been seen at each hour across all collected data</p>
                 <div class="chart-wrapper">
                     <canvas id="hourlyChart"></canvas>
                 </div>
             </div>
 
             <div class="chart-container">
-                <h2>Average Clients by Day of Week</h2>
+                <h2>Total Unique Clients by Day of Week</h2>
+                <p style="color: #666; margin-top: -10px; margin-bottom: 20px;">Shows how many different clients have been seen on each day across all collected data</p>
                 <div class="chart-wrapper">
                     <canvas id="dayOfWeekChart"></canvas>
                 </div>
@@ -546,10 +548,10 @@
                 charts.hourly = new Chart(hourlyCtx, {
                     type: 'line',
                     data: {
-                        labels: peakAnalysis.hourly_averages.map(d => d.hour_label),
+                        labels: peakAnalysis.hourly_totals.map(d => d.hour_label),
                         datasets: [{
-                            label: 'Avg Unique IP Addresses',
-                            data: peakAnalysis.hourly_averages.map(d => d.avg_unique_ips),
+                            label: 'Total Unique IP Addresses Seen',
+                            data: peakAnalysis.hourly_totals.map(d => d.unique_ips),
                             borderColor: '#667eea',
                             backgroundColor: 'rgba(102, 126, 234, 0.1)',
                             tension: 0.4,
@@ -580,10 +582,10 @@
                 charts.dayOfWeek = new Chart(dayCtx, {
                     type: 'bar',
                     data: {
-                        labels: peakAnalysis.day_of_week_averages.map(d => d.day),
+                        labels: peakAnalysis.day_of_week_totals.map(d => d.day),
                         datasets: [{
-                            label: 'Avg Unique IP Addresses',
-                            data: peakAnalysis.day_of_week_averages.map(d => d.avg_unique_ips),
+                            label: 'Total Unique IP Addresses Seen',
+                            data: peakAnalysis.day_of_week_totals.map(d => d.unique_ips),
                             backgroundColor: '#667eea',
                             borderColor: '#667eea',
                             borderWidth: 1

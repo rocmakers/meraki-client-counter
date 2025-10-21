@@ -399,11 +399,12 @@ class DataProcessor:
 
     def analyze_peak_hours(self, clients, days=7):
         """
-        Analyze peak hours to find when the most clients are connected.
+        Analyze peak hours to find when the most unique clients have been seen.
+        Shows total unique clients ever seen at each hour/day, not averages.
 
         Args:
             clients: List of client records
-            days: Number of days to analyze (default: 7)
+            days: Number of days to analyze (default: 7, ignored for now)
 
         Returns:
             dict: Peak hours analysis including busiest hours and day-of-week patterns
@@ -412,65 +413,64 @@ class DataProcessor:
             return {
                 'peak_hour': None,
                 'peak_count': 0,
-                'hourly_averages': [],
-                'day_of_week_averages': []
+                'hourly_totals': [],
+                'day_of_week_totals': []
             }
 
-        # Group by hour
-        grouped = self.group_clients_by_hour(clients)
+        # Count unique clients by hour of day (across all dates)
+        hourly_clients = defaultdict(set)  # hour -> set of MACs
+        hourly_ips = defaultdict(set)      # hour -> set of IPs
 
-        # Calculate stats for each hour
-        hourly_data = defaultdict(lambda: {'macs': [], 'ips': []})
-        day_of_week_data = defaultdict(lambda: {'macs': [], 'ips': []})
+        # Count unique clients by day of week (across all dates)
+        day_clients = defaultdict(set)     # day_name -> set of MACs
+        day_ips = defaultdict(set)         # day_name -> set of IPs
 
-        for hour_key, hour_clients in grouped.items():
-            stats = self.count_unique_clients(hour_clients)
+        for client in clients:
+            if client.get('lastSeen'):
+                try:
+                    dt = datetime.fromisoformat(client['lastSeen'].replace('Z', '+00:00'))
+                    hour_of_day = dt.hour
+                    day_of_week = dt.strftime('%A')
 
-            # Parse the hour
-            dt = datetime.strptime(hour_key, '%Y-%m-%d %H:00')
-            hour_of_day = dt.hour
-            day_of_week = dt.strftime('%A')  # Monday, Tuesday, etc.
+                    mac = client.get('mac')
+                    ip = client.get('ip')
 
-            # Store for averaging
-            hourly_data[hour_of_day]['macs'].append(stats['unique_macs'])
-            hourly_data[hour_of_day]['ips'].append(stats['unique_ips'])
-            day_of_week_data[day_of_week]['macs'].append(stats['unique_macs'])
-            day_of_week_data[day_of_week]['ips'].append(stats['unique_ips'])
+                    if mac:
+                        hourly_clients[hour_of_day].add(mac)
+                        day_clients[day_of_week].add(mac)
+                    if ip:
+                        hourly_ips[hour_of_day].add(ip)
+                        day_ips[day_of_week].add(ip)
 
-        # Calculate averages for each hour of day (0-23)
-        hourly_averages = []
+                except (ValueError, AttributeError) as e:
+                    self.logger.warning(f"Could not parse lastSeen timestamp: {e}")
+
+        # Build hourly totals (0-23)
+        hourly_totals = []
         for hour in range(24):
-            if hour in hourly_data and hourly_data[hour]['macs']:
-                avg_macs = sum(hourly_data[hour]['macs']) / len(hourly_data[hour]['macs'])
-                avg_ips = sum(hourly_data[hour]['ips']) / len(hourly_data[hour]['ips'])
-                hourly_averages.append({
-                    'hour': hour,
-                    'hour_label': f"{hour:02d}:00",
-                    'avg_unique_macs': round(avg_macs, 2),
-                    'avg_unique_ips': round(avg_ips, 2),
-                    'samples': len(hourly_data[hour]['macs'])
-                })
+            hourly_totals.append({
+                'hour': hour,
+                'hour_label': f"{hour:02d}:00",
+                'unique_macs': len(hourly_clients[hour]),
+                'unique_ips': len(hourly_ips[hour])
+            })
 
-        # Calculate averages for each day of week
+        # Build day of week totals
         day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        day_of_week_averages = []
+        day_of_week_totals = []
         for day in day_order:
-            if day in day_of_week_data and day_of_week_data[day]['macs']:
-                avg_macs = sum(day_of_week_data[day]['macs']) / len(day_of_week_data[day]['macs'])
-                avg_ips = sum(day_of_week_data[day]['ips']) / len(day_of_week_data[day]['ips'])
-                day_of_week_averages.append({
-                    'day': day,
-                    'avg_unique_macs': round(avg_macs, 2),
-                    'avg_unique_ips': round(avg_ips, 2),
-                    'samples': len(day_of_week_data[day]['macs'])
-                })
+            day_of_week_totals.append({
+                'day': day,
+                'unique_macs': len(day_clients[day]),
+                'unique_ips': len(day_ips[day])
+            })
 
         # Find peak hour
-        peak_hour_data = max(hourly_averages, key=lambda x: x['avg_unique_macs']) if hourly_averages else None
+        peak_hour_data = max(hourly_totals, key=lambda x: x['unique_ips']) if hourly_totals else None
 
         return {
             'peak_hour': peak_hour_data,
-            'hourly_averages': hourly_averages,
-            'day_of_week_averages': day_of_week_averages,
-            'total_hours_analyzed': len(grouped)
+            'hourly_totals': hourly_totals,
+            'day_of_week_totals': day_of_week_totals,
+            'total_unique_clients': len(set(c['mac'] for c in clients if c.get('mac')))
         }
