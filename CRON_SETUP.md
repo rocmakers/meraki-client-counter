@@ -2,22 +2,24 @@
 
 ## Overview
 
-Run the Meraki client counter daily to build up historical data in the SQLite database. Over time, you'll accumulate enough data for true 52-week and 12-month trend analysis.
+Run the Meraki client counter **hourly** to build up historical data in the SQLite database. Over time, you'll accumulate enough data for true 52-week and 12-month trend analysis, plus hourly graphs and peak hours detection.
 
 ## Recommended Cron Schedule
 
-### Daily Data Collection (12:01 AM)
+### Hourly Data Collection
 
 ```bash
-1 0 * * * /Users/eric/Projects/RMS/avgdevs/run_collection.sh >> /var/log/meraki_collection.log 2>&1
+0 * * * * /Users/eric/Projects/RMS/avgdevs/run_collection.sh >> /var/log/meraki_collection.log 2>&1
 ```
 
 This will:
-- Run every day at 12:01 AM
-- **Smart Collection**: Only fetches data since last run + 12-hour buffer (~1.5 days for daily runs)
+- Run every hour on the hour
+- **Smart Collection**: Only fetches data since last run + 1.5-hour buffer (minimum)
 - **First Run**: Collects 30 days of initial historical data
+- **Auto-Recovery**: If server/internet down, automatically catches up on next run
 - Store new client records in database (duplicates automatically skipped)
 - Log output to `/var/log/meraki_collection.log`
+- Enables hourly graphs and peak hours analysis
 
 ### Optional: Weekly Chart Generation (Sundays at 12:10 AM)
 
@@ -47,6 +49,35 @@ Paste one or both of the cron lines above (adjust log paths if needed).
 
 The cron daemon will automatically pick up the changes.
 
+### 4. Ensure cron starts on boot
+
+**On macOS:**
+Cron is managed by launchd and starts automatically. No additional setup needed.
+
+**On Linux (systemd):**
+```bash
+# Enable cron to start on boot
+sudo systemctl enable cron
+
+# Start cron now
+sudo systemctl start cron
+
+# Check status
+sudo systemctl status cron
+```
+
+**On older Linux (SysV init):**
+```bash
+# Check if cron is enabled
+sudo chkconfig --list crond
+
+# Enable cron to start on boot
+sudo chkconfig crond on
+
+# Start cron now
+sudo service crond start
+```
+
 ## Verify Cron Jobs
 
 ```bash
@@ -66,13 +97,14 @@ The application uses **timestamp-based collection** for maximum efficiency:
 
 1. **First Run**: Fetches 30 days of data to build initial baseline
 2. **Subsequent Runs**: Queries database for most recent client timestamp
-3. **Calculates Range**: Fetches from (last_timestamp - 12 hours) to now
-4. **Adapts Automatically**:
-   - Daily cron → fetches ~1.5 days
-   - Missed a few days → automatically catches up
-   - Weekly cron → fetches ~7.5 days
+3. **Calculates Range**: Fetches from (last_timestamp - 1.5 hours) to now
+4. **Minimum Window**: Always fetches at least 1.5 hours (even if last run was recent)
+5. **Adapts Automatically**:
+   - Hourly cron → fetches ~1.5 hours
+   - Missed a few hours → automatically catches up
+   - Server down for a day → fetches all missing data on recovery
 
-**Result**: Minimal API calls while ensuring no data gaps!
+**Result**: Minimal API calls while ensuring no data gaps and enabling hourly analysis!
 
 ## Database Growth Over Time
 

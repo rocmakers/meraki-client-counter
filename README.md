@@ -221,29 +221,30 @@ The Meraki API has a rate limit of **10 calls per second per organization**. Thi
 
 ## Automated Data Collection (Cron Setup)
 
-For long-term trend analysis, run this tool daily to build up historical data:
+For long-term trend analysis and hourly graphs, run this tool every hour:
 
 ### Quick Setup
 
 ```bash
-# Daily collection at 12:01 AM
+# Hourly collection (on the hour)
 crontab -e
 
 # Add this line:
-1 0 * * * /Users/eric/Projects/RMS/avgdevs/run_collection.sh >> /Users/eric/meraki_collection.log 2>&1
+0 * * * * /Users/eric/Projects/RMS/avgdevs/run_collection.sh >> /Users/eric/meraki_collection.log 2>&1
 ```
 
 ### What This Does
 
-- **Smart Collection**: Automatically fetches only what's needed since last run (plus 12-hour safety buffer)
+- **Smart Collection**: Automatically fetches only what's needed since last run (minimum 1.5 hours)
 - **First Run**: Collects 30 days of initial data to build historical baseline
-- **Daily Runs**: Typically fetches ~1.5 days (24h + 12h buffer) - extremely efficient!
+- **Hourly Runs**: Fetches ~1.5 hours per run - extremely efficient!
+- **Auto-Recovery**: If server/internet down, automatically catches up on next successful run
 - Stores new records in SQLite database
 - Automatically skips duplicates
 - Over time, builds up **52 weeks** and **12 months** of data
-- Charts will show more history as data accumulates
+- Enables hourly graphs and peak hours analysis
 
-**How it works:** The app tracks the most recent client timestamp in the database and only fetches data from that point (minus 12 hours as a safety buffer). This means if you run daily, it only fetches ~1.5 days instead of 7 or 30 days - much more API-efficient!
+**How it works:** The app tracks the most recent client timestamp in the database and only fetches data from that point (minus 1.5 hours as a safety buffer). This means hourly runs only fetch ~1.5 hours of data - very API-efficient while providing granular data for hourly analysis!
 
 **See [CRON_SETUP.md](CRON_SETUP.md) for detailed instructions and troubleshooting.**
 

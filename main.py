@@ -148,17 +148,21 @@ Examples:
     return parser.parse_args()
 
 
-def collect_client_data(client, org_id, db, buffer_hours=12):
+def collect_client_data(client, org_id, db, buffer_hours=1.5, min_hours=1.5):
     """
     Collect client data from Meraki API.
     Uses smart collection: fetches from last collection timestamp minus buffer hours.
     On first run, fetches 30 days of initial data.
 
+    For hourly collection: fetches 1.5 hours minimum (1h + 30min buffer)
+    If server/internet was down: automatically fetches more based on last timestamp
+
     Args:
         client: MerakiClient instance
         org_id: Organization ID
         db: ClientDatabase instance
-        buffer_hours: Safety buffer in hours before last collection (default: 12)
+        buffer_hours: Safety buffer in hours before last collection (default: 1.5 for hourly runs)
+        min_hours: Minimum hours to fetch (default: 1.5)
 
     Returns:
         tuple: (client records, days_fetched)
@@ -177,14 +181,20 @@ def collect_client_data(client, org_id, db, buffer_hours=12):
         fetch_from = latest_dt - timedelta(hours=buffer_hours)
         now = datetime.utcnow()
 
-        # Calculate how many days we need to fetch
-        days_to_fetch = (now - fetch_from).days + 1  # +1 to ensure we cover partial days
+        # Calculate how many hours we need to fetch
+        hours_to_fetch = (now - fetch_from).total_seconds() / 3600
+
+        # Ensure minimum fetch window
+        hours_to_fetch = max(hours_to_fetch, min_hours)
+
+        # Convert to days for API call
+        days_to_fetch = int(hours_to_fetch / 24) + 1  # +1 to ensure we cover partial days
 
         # Cap at API maximum (30 days)
         days_to_fetch = min(days_to_fetch, 30)
 
         logger.info(f"Last collection: {latest_timestamp}")
-        logger.info(f"Fetching from {fetch_from.isoformat()} (last collection - {buffer_hours}h buffer)")
+        logger.info(f"Fetching from {fetch_from.isoformat()} ({hours_to_fetch:.1f}h window)")
         logger.info(f"Fetching {days_to_fetch} days of data...")
     else:
         # First run - fetch 30 days to build initial historical data
