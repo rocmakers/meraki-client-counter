@@ -53,3 +53,12 @@ Thumbs.db
 *.json
 *.csv
 !requirements.txt
+
+# Flask
+instance/
+.webassets-cache
+.flask_session/
+
+# Charts
+*.png
+!static/*.png

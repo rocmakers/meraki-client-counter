@@ -158,3 +158,95 @@ class ChartGenerator:
         monthly_path = self.create_monthly_chart(monthly_details, monthly_file)
 
         return weekly_path, monthly_path
+
+    def create_hourly_chart(self, hourly_data, output_file='hourly_chart.png', title='Hourly Client Counts'):
+        """
+        Create a line chart showing hourly client counts.
+
+        Args:
+            hourly_data: List of hourly statistics with 'hour_label' and count data
+            output_file: Output filename for the chart
+            title: Chart title
+
+        Returns:
+            str: Path to saved chart file
+        """
+        if not hourly_data:
+            self.logger.warning("No hourly data to chart")
+            return None
+
+        # Sort by hour
+        sorted_data = sorted(hourly_data, key=lambda x: x['hour'])
+
+        hours = [d['hour_label'] for d in sorted_data]
+        mac_counts = [d['avg_unique_macs'] for d in sorted_data]
+        ip_counts = [d['avg_unique_ips'] for d in sorted_data]
+
+        # Create figure
+        fig, ax = plt.subplots(1, 1, figsize=(14, 6))
+        fig.suptitle(title, fontsize=16, fontweight='bold')
+
+        # Plot MAC vs IP
+        ax.plot(hours, mac_counts, marker='o', linewidth=2, markersize=6,
+                label='Avg Unique MAC Addresses', color='#1f77b4')
+        ax.plot(hours, ip_counts, marker='s', linewidth=2, markersize=6,
+                label='Avg Unique IP Addresses', color='#ff7f0e')
+        ax.set_ylabel('Average Unique Clients', fontsize=12, fontweight='bold')
+        ax.set_xlabel('Hour of Day', fontsize=12)
+        ax.legend(loc='best', fontsize=10)
+        ax.grid(True, alpha=0.3)
+
+        # Rotate x-axis labels for better readability
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
+
+        plt.tight_layout()
+        plt.savefig(output_file, dpi=150, bbox_inches='tight')
+        plt.close()
+
+        self.logger.info(f"Hourly chart saved to {output_file}")
+        return output_file
+
+    def create_day_of_week_chart(self, day_data, output_file='day_of_week_chart.png'):
+        """
+        Create a bar chart showing average clients by day of week.
+
+        Args:
+            day_data: List of day-of-week statistics
+            output_file: Output filename for the chart
+
+        Returns:
+            str: Path to saved chart file
+        """
+        if not day_data:
+            self.logger.warning("No day-of-week data to chart")
+            return None
+
+        days = [d['day'] for d in day_data]
+        mac_counts = [d['avg_unique_macs'] for d in day_data]
+        ip_counts = [d['avg_unique_ips'] for d in day_data]
+
+        # Create figure
+        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+        fig.suptitle('Average Clients by Day of Week', fontsize=16, fontweight='bold')
+
+        # Set up bar positions
+        x = range(len(days))
+        width = 0.35
+
+        # Create bars
+        ax.bar([i - width/2 for i in x], mac_counts, width, label='Avg MAC Addresses', color='#1f77b4')
+        ax.bar([i + width/2 for i in x], ip_counts, width, label='Avg IP Addresses', color='#ff7f0e')
+
+        ax.set_ylabel('Average Unique Clients', fontsize=12, fontweight='bold')
+        ax.set_xlabel('Day of Week', fontsize=12)
+        ax.set_xticks(x)
+        ax.set_xticklabels(days)
+        ax.legend(loc='best', fontsize=10)
+        ax.grid(True, alpha=0.3, axis='y')
+
+        plt.tight_layout()
+        plt.savefig(output_file, dpi=150, bbox_inches='tight')
+        plt.close()
+
+        self.logger.info(f"Day-of-week chart saved to {output_file}")
+        return output_file

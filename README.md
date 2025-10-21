@@ -4,13 +4,15 @@ A Python application that queries the Cisco Meraki Dashboard API to calculate an
 
 ## Features
 
+- **📊 Web Dashboard**: Responsive web interface with interactive charts (works on mobile and desktop)
 - **Dual Tracking**: Counts both unique MAC addresses and unique IP addresses
 - **MAC Randomization Detection**: Identifies and quantifies the impact of MAC randomization on client counts
 - **Time Period Averages**: Calculates averages for daily, weekly (Sunday-Saturday), and monthly periods
+- **Peak Hours Analysis**: Identifies busiest times of day and days of week
 - **Historical Data Storage**: SQLite database stores all client data for long-term trend analysis
-- **Automated Collection**: Run daily via cron to build up 52 weeks / 12 months of historical data
+- **Automated Collection**: Run hourly via cron to build up 52 weeks / 12 months of historical data
 - **Chart Generation**: Creates beautiful PNG charts showing trends over time
-- **Multiple Output Formats**: Console, JSON, and CSV output options
+- **Multiple Output Formats**: Console, JSON, CSV, and web interface
 - **Simple Configuration**: Interactive setup on first run with credential storage
 - **Connection Type Breakdown**: Separate counts for wireless and wired clients
 
@@ -122,6 +124,51 @@ python main.py --db-stats
 ```bash
 python main.py --use-historical --generate-charts --weeks 52 --months 12
 ```
+
+## Web Dashboard
+
+The application includes a responsive web dashboard that displays all statistics with interactive charts.
+
+### Starting the Web Server
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Start the web server
+python web_app.py
+```
+
+The dashboard will be available at `http://localhost:5000`
+
+### Features
+
+- **📱 Responsive Design**: Works perfectly on mobile phones, tablets, and desktops
+- **📊 Interactive Charts**: Click and hover for detailed information
+- **🔄 Auto-Refresh**: Data updates automatically every 5 minutes
+- **📈 Multiple Views**:
+  - **Overview**: Daily and weekly averages with trends
+  - **Peak Hours**: Busiest hours of day and days of week
+  - **Trends**: Long-term monthly trends (up to 12 months)
+- **💾 Export**: Download data as JSON or CSV directly from the web interface
+
+### Production Deployment
+
+For production use, deploy with a proper WSGI server like **gunicorn**:
+
+```bash
+# Install gunicorn
+pip install gunicorn
+
+# Run with gunicorn (4 workers)
+gunicorn -w 4 -b 0.0.0.0:5000 web_app:app
+```
+
+For public internet access, use a reverse proxy like **nginx** or **Apache** in front of gunicorn.
+
+### Privacy Note
+
+The web dashboard only displays aggregate statistics (counts, averages, percentages). Individual client data (MAC addresses, IP addresses, device names) is never exposed through the web interface.
 
 ## Understanding the Output
 
