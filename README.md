@@ -139,7 +139,7 @@ source venv/bin/activate
 python web_app.py
 ```
 
-The dashboard will be available at `http://localhost:5000`
+The dashboard will be available at `http://localhost:7001`
 
 ### Features
 
@@ -161,7 +161,7 @@ For production use, deploy with a proper WSGI server like **gunicorn**:
 pip install gunicorn
 
 # Run with gunicorn (4 workers)
-gunicorn -w 4 -b 0.0.0.0:5000 web_app:app
+gunicorn -w 4 -b 0.0.0.0:7001 web_app:app
 ```
 
 For public internet access, use a reverse proxy like **nginx** or **Apache** in front of gunicorn.
