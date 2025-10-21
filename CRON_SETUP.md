@@ -14,7 +14,7 @@ Run the Meraki client counter daily to build up historical data in the SQLite da
 
 This will:
 - Run every day at 12:01 AM
-- Collect last 30 days from Meraki API
+- Collect last 7 days from Meraki API (optimal for daily collection)
 - Store new client records in database (duplicates automatically skipped)
 - Log output to `/var/log/meraki_collection.log`
 

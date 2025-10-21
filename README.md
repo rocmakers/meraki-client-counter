@@ -235,11 +235,13 @@ crontab -e
 
 ### What This Does
 
-- Collects last 30 days from Meraki API every night
+- Collects last **7 days** from Meraki API every night (optimal for daily collection)
 - Stores new records in SQLite database
 - Automatically skips duplicates
 - Over time, builds up **52 weeks** and **12 months** of data
 - Charts will show more history as data accumulates
+
+**Why 7 days?** This provides a safety margin in case the cron job fails for a day or two, while being much more efficient than pulling 30 days every time.
 
 **See [CRON_SETUP.md](CRON_SETUP.md) for detailed instructions and troubleshooting.**
 

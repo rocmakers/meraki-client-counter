@@ -148,14 +148,14 @@ Examples:
     return parser.parse_args()
 
 
-def collect_client_data(client, org_id, days_to_fetch):
+def collect_client_data(client, org_id, days_to_fetch=7):
     """
     Collect client data from Meraki API.
 
     Args:
         client: MerakiClient instance
         org_id: Organization ID
-        days_to_fetch: Number of days of data to fetch
+        days_to_fetch: Number of days of data to fetch (default: 7 for daily cron)
 
     Returns:
         list: Client records
@@ -168,8 +168,7 @@ def collect_client_data(client, org_id, days_to_fetch):
 
     logger.info(f"Fetching client data for last {min(days_to_fetch, max_days_per_call)} days...")
 
-    # For now, use single call with max timespan
-    # In production, you might need multiple calls for >30 days
+    # Collect client data from API
     clients = client.get_clients_in_timespan(org_id, timespan_seconds)
 
     logger.info(f"Retrieved {len(clients)} total client records")
@@ -239,22 +238,25 @@ def main():
     org_name = org_info.get('name', 'Unknown')
     logger.info(f"Organization: {org_name}")
 
-    # Determine how many days of data to fetch (max needed for all periods)
-    # If generating charts, use the chart parameters for more data
+    # Determine how many days of data to fetch
+    # Default to 7 days for regular collection (optimal for daily cron)
+    # If specific analysis periods requested or generating charts, use those parameters
     if args.generate_charts:
         days_to_fetch = max(
-            args.days,
-            args.weeks * 7,
-            args.months * 31,
             args.chart_weeks * 7,
             args.chart_months * 31
         )
-    else:
+    elif args.period != 'all':
+        # Specific period requested, fetch enough for that analysis
         days_to_fetch = max(
-            args.days,
-            args.weeks * 7,
-            args.months * 31
+            args.days if args.period == 'daily' else 0,
+            args.weeks * 7 if args.period == 'weekly' else 0,
+            args.months * 31 if args.period == 'monthly' else 0
         )
+    else:
+        # Default: fetch 7 days for efficient daily collection
+        # This is optimal for cron jobs running daily
+        days_to_fetch = 7
 
     # Limit to API maximum
     days_to_fetch = min(days_to_fetch, 30)
