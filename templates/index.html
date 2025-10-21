@@ -530,7 +530,7 @@
         // Load peak hours data
         async function loadPeakHoursData() {
             try {
-                const response = await fetch('/api/stats/peak-hours?days=7');
+                const response = await fetch('/api/stats/peak-hours');  // Use all available data
                 const data = await response.json();
 
                 if (data.error) {

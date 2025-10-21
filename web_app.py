@@ -83,21 +83,26 @@ def get_peak_hours():
     Get peak hours analysis.
 
     Query parameters:
-        days: Number of days to analyze (default: 7)
+        days: Number of days to analyze (default: all available data)
 
     Returns:
         JSON with peak hours data
     """
     try:
-        days = int(request.args.get('days', 7))
+        days = int(request.args.get('days', 0))  # 0 means all data
 
         db = ClientDatabase()
         processor = DataProcessor()
 
-        # Get recent data
-        end_date = datetime.utcnow()
-        start_date = end_date - timedelta(days=days)
-        clients = db.get_clients_in_date_range(start_date, end_date)
+        # Get data
+        if days > 0:
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=days)
+            clients = db.get_clients_in_date_range(start_date, end_date)
+        else:
+            # Use all available historical data
+            clients = db.get_all_clients()
+            days = 'all'
 
         if not clients:
             return jsonify({'error': 'No data available for the specified period'}), 404
